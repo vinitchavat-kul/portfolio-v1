@@ -1,9 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './index.css'
 
 function App() {
   const [processInput, setProcessInput] = useState('')
   const [pythonCode, setPythonCode] = useState('')
+  
+  // OT Calculator States
+  const [salary, setSalary] = useState('')
+  const [weekdayOT, setWeekdayOT] = useState('')
+  const [holidayOT, setHolidayOT] = useState('')
+  const [otResults, setOtResults] = useState(null)
 
   const convertToCode = () => {
     if (!processInput.trim()) return
@@ -40,6 +46,39 @@ function App() {
     setPythonCode(code)
   }
 
+  const calculateOT = () => {
+    const salaryNum = parseFloat(salary) || 0
+    const weekdayHours = parseFloat(weekdayOT) || 0
+    const holidayHours = parseFloat(holidayOT) || 0
+    
+    if (salaryNum <= 0) {
+      setOtResults(null)
+      return
+    }
+    
+    // Calculate hourly rate: (salary / 30) / 8
+    const hourlyRate = salaryNum / 30 / 8
+    
+    // Calculate OT amounts
+    const weekdayOTAmount = hourlyRate * 1.5 * weekdayHours
+    const holidayOTAmount = hourlyRate * 3 * holidayHours
+    const totalOT = weekdayOTAmount + holidayOTAmount
+    
+    setOtResults({
+      hourlyRate: hourlyRate.toFixed(2),
+      weekdayOTAmount: weekdayOTAmount.toFixed(2),
+      holidayOTAmount: holidayOTAmount.toFixed(2),
+      totalOT: totalOT.toFixed(2),
+      weekdayHours,
+      holidayHours
+    })
+  }
+
+  // Real-time calculation
+  useEffect(() => {
+    calculateOT()
+  }, [salary, weekdayOT, holidayOT])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Navigation */}
@@ -54,6 +93,7 @@ function App() {
                 <a href="#home" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors">Home</a>
                 <a href="#journey" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors">My Logic Journey</a>
                 <a href="#playground" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors">Logic Playground</a>
+                <a href="#ot-calculator" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors">OT Calculator</a>
                 <a href="#skills" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors">Skills</a>
                 <a href="#contact" className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 hover:text-white transition-colors">Contact</a>
               </div>
@@ -227,6 +267,148 @@ function App() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* OT Calculator Section */}
+      <section id="ot-calculator" className="py-20 px-4">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-4xl md:text-5xl font-bold text-center mb-16">
+            <span className="gradient-text">เครื่องคำนวณ OT</span>
+          </h2>
+          
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-gray-700">
+            <p className="text-gray-300 mb-8 text-center">
+              คำนวณค่าล่วงเวลาทำงาน (OT) ตามกฎหมายแรงงานไทย โดยอัตโนมัติ
+            </p>
+            
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              {/* Salary Input */}
+              <div>
+                <label htmlFor="salary" className="block text-sm font-medium text-gray-300 mb-2">
+                  เงินเดือน (บาท)
+                </label>
+                <input
+                  id="salary"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={salary}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '' || parseFloat(value) >= 0) {
+                      setSalary(value)
+                    }
+                  }}
+                  onKeyPress={(e) => {
+                    if (!/[0-9.]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'Enter') {
+                      e.preventDefault()
+                    }
+                  }}
+                  placeholder="15000"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+              
+              {/* Weekday OT Input */}
+              <div>
+                <label htmlFor="weekday-ot" className="block text-sm font-medium text-gray-300 mb-2">
+                  ชั่วโมง OT วันธรรมดา (1.5 เท่า)
+                </label>
+                <input
+                  id="weekday-ot"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={weekdayOT}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '' || parseFloat(value) >= 0) {
+                      setWeekdayOT(value)
+                    }
+                  }}
+                  onKeyPress={(e) => {
+                    if (!/[0-9.]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'Enter') {
+                      e.preventDefault()
+                    }
+                  }}
+                  placeholder="8"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+              
+              {/* Holiday OT Input */}
+              <div>
+                <label htmlFor="holiday-ot" className="block text-sm font-medium text-gray-300 mb-2">
+                  ชั่วโมง OT วันหยุด (3 เท่า)
+                </label>
+                <input
+                  id="holiday-ot"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={holidayOT}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '' || parseFloat(value) >= 0) {
+                      setHolidayOT(value)
+                    }
+                  }}
+                  onKeyPress={(e) => {
+                    if (!/[0-9.]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'Enter') {
+                      e.preventDefault()
+                    }
+                  }}
+                  placeholder="4"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+            </div>
+            
+            {/* Results Section */}
+            {otResults && (
+              <div className="space-y-4">
+                <div className="bg-gray-900 rounded-lg p-6 border border-gray-600">
+                  <h3 className="text-lg font-semibold text-gray-300 mb-4">สรุปยอด OT</h3>
+                  
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">อัตราค่าแรงต่อชั่วโมง:</span>
+                        <span className="text-gray-200 font-semibold">฿{otResults.hourlyRate}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">OT วันธรรมดา ({otResults.weekdayHours} ชม.):</span>
+                        <span className="text-blue-400 font-semibold">฿{otResults.weekdayOTAmount}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">OT วันหยุด ({otResults.holidayHours} ชม.):</span>
+                        <span className="text-purple-400 font-semibold">฿{otResults.holidayOTAmount}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-4 text-center">
+                      <p className="text-white/80 text-sm mb-1">ยอดเงินรวม OT</p>
+                      <p className="text-white text-3xl font-bold">฿{otResults.totalOT}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Calculation Formula */}
+                <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-600">
+                  <p className="text-gray-400 text-sm">
+                    <strong>สูตรการคำนวณ:</strong> (เงินเดือน ÷ 30 ÷ 8) × เรท OT × จำนวนชั่วโมง
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {!otResults && (
+              <div className="text-center py-8">
+                <p className="text-gray-400">กรุณากรอกข้อมูลเพื่อคำนวณค่า OT</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
