@@ -10,6 +10,109 @@ function App() {
   const [weekdayOT, setWeekdayOT] = useState('')
   const [holidayOT, setHolidayOT] = useState('')
   const [otResults, setOtResults] = useState(null)
+  const [otHistory, setOtHistory] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterType, setFilterType] = useState('all')
+
+  // Load history from localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedHistory = localStorage.getItem('otHistory')
+      if (savedHistory) {
+        const parsedHistory = JSON.parse(savedHistory)
+        if (Array.isArray(parsedHistory)) {
+          setOtHistory(parsedHistory)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading history from localStorage:', error)
+      // Clear corrupted data
+      localStorage.removeItem('otHistory')
+    }
+  }, [])
+
+  // Save history to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      if (otHistory.length > 0) {
+        localStorage.setItem('otHistory', JSON.stringify(otHistory))
+      }
+    } catch (error) {
+      console.error('Error saving history to localStorage:', error)
+    }
+  }, [otHistory])
+
+  const saveToHistory = () => {
+    if (!otResults) return
+    
+    const historyEntry = {
+      id: Date.now(),
+      date: new Date().toLocaleString('th-TH'),
+      salary: parseFloat(salary),
+      weekdayHours: parseFloat(weekdayOT),
+      holidayHours: parseFloat(holidayOT),
+      totalOT: parseFloat(otResults.totalOT),
+      weekdayOTAmount: parseFloat(otResults.weekdayOTAmount),
+      holidayOTAmount: parseFloat(otResults.holidayOTAmount),
+      hourlyRate: parseFloat(otResults.hourlyRate)
+    }
+    
+    console.log('Saving to history:', historyEntry)
+    setOtHistory(prevHistory => {
+      const newHistory = [historyEntry, ...prevHistory]
+      console.log('New history:', newHistory)
+      return newHistory
+    })
+  }
+
+  const clearHistory = () => {
+    console.log('Clearing history')
+    setOtHistory([])
+    localStorage.removeItem('otHistory')
+  }
+
+  // Filter history based on search and filter type
+  const getFilteredHistory = () => {
+    let filtered = [...otHistory]
+    
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(entry => 
+        entry.date.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.salary.toString().includes(searchTerm) ||
+        entry.totalOT.toString().includes(searchTerm) ||
+        entry.weekdayHours.toString().includes(searchTerm) ||
+        entry.holidayHours.toString().includes(searchTerm)
+      )
+    }
+    
+    // Apply type filter
+    switch (filterType) {
+      case 'over1000':
+        filtered = filtered.filter(entry => entry.totalOT > 1000)
+        break
+      case 'over5000':
+        filtered = filtered.filter(entry => entry.totalOT > 5000)
+        break
+      case 'over10000':
+        filtered = filtered.filter(entry => entry.totalOT > 10000)
+        break
+      case 'weekdayOnly':
+        filtered = filtered.filter(entry => entry.weekdayHours > 0 && entry.holidayHours === 0)
+        break
+      case 'holidayOnly':
+        filtered = filtered.filter(entry => entry.holidayHours > 0 && entry.weekdayHours === 0)
+        break
+      case 'bothTypes':
+        filtered = filtered.filter(entry => entry.weekdayHours > 0 && entry.holidayHours > 0)
+        break
+      default:
+        // 'all' - no additional filtering
+        break
+    }
+    
+    return filtered
+  }
 
   const convertToCode = () => {
     if (!processInput.trim()) return
@@ -401,6 +504,16 @@ function App() {
                     <strong>สูตรการคำนวณ:</strong> (เงินเดือน ÷ 30 ÷ 8) × เรท OT × จำนวนชั่วโมง
                   </p>
                 </div>
+                
+                {/* Action Buttons */}
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={saveToHistory}
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                  >
+                    บันทึกประวัติ
+                  </button>
+                </div>
               </div>
             )}
             
@@ -412,6 +525,104 @@ function App() {
           </div>
         </div>
       </section>
+
+      {/* OT History Section */}
+      {otHistory.length > 0 && (
+        <section className="py-10 px-4 bg-gray-800/20">
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-gray-700">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-300">ประวัติการคำนวณ OT</h3>
+                <button
+                  onClick={clearHistory}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                >
+                  ลบประวัติทั้งหมด
+                </button>
+              </div>
+              
+              {/* Search and Filter Controls */}
+              <div className="mb-6 space-y-4">
+                {/* Search Input */}
+                <div>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="ค้นหาตามวันที่, เงินเดือน, ชั่วโมง OT, หรือยอดเงิน..."
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                
+                {/* Filter Options */}
+                <div className="flex flex-wrap gap-2">
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  >
+                    <option value="all">ทั้งหมด</option>
+                    <option value="over1000">OT เกิน 1,000 บาท</option>
+                    <option value="over5000">OT เกิน 5,000 บาท</option>
+                    <option value="over10000">OT เกิน 10,000 บาท</option>
+                    <option value="weekdayOnly">เฉพาะ OT วันธรรมดา</option>
+                    <option value="holidayOnly">เฉพาะ OT วันหยุด</option>
+                    <option value="bothTypes">OT ทั้งสองประเภท</option>
+                  </select>
+                  
+                  <button
+                    onClick={() => {
+                      setSearchTerm('')
+                      setFilterType('all')
+                    }}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-gray-300 transition-colors"
+                  >
+                    ล้างตัวกรอง
+                  </button>
+                </div>
+                
+                {/* Filter Summary */}
+                <div className="text-sm text-gray-400">
+                  แสดง {getFilteredHistory().length} จาก {otHistory.length} รายการ
+                </div>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-gray-600">
+                      <th className="px-4 py-3 text-gray-300 font-semibold">วันที่คำนวณ</th>
+                      <th className="px-4 py-3 text-gray-300 font-semibold">เงินเดือน</th>
+                      <th className="px-4 py-3 text-gray-300 font-semibold">OT วันธรรมดา</th>
+                      <th className="px-4 py-3 text-gray-300 font-semibold">OT วันหยุด</th>
+                      <th className="px-4 py-3 text-gray-300 font-semibold">ยอดรวม OT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getFilteredHistory().map((entry) => (
+                      <tr key={entry.id} className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
+                        <td className="px-4 py-3 text-gray-400">{entry.date}</td>
+                        <td className="px-4 py-3 text-gray-300">฿{entry.salary.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-blue-400">{entry.weekdayHours} ชม. (฿{entry.weekdayOTAmount.toLocaleString()})</td>
+                        <td className="px-4 py-3 text-purple-400">{entry.holidayHours} ชม. (฿{entry.holidayOTAmount.toLocaleString()})</td>
+                        <td className="px-4 py-3 text-green-400 font-bold">฿{entry.totalOT.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Summary */}
+              <div className="mt-4 text-right">
+                <p className="text-gray-400 text-sm">
+                  รวมทั้งหมด {getFilteredHistory().length} รายการ | 
+                  ยอด OT รวม: ฿{getFilteredHistory().reduce((sum, entry) => sum + entry.totalOT, 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Skills Section */}
       <section id="skills" className="py-20 px-4 bg-gray-800/30">
