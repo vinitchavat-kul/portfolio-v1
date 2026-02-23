@@ -14,6 +14,11 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState('all')
 
+  // Delete specific history entry
+  const deleteHistoryEntry = (id) => {
+    setOtHistory(prevHistory => prevHistory.filter(entry => entry.id !== id))
+  }
+
   // Load history from localStorage on component mount
   useEffect(() => {
     try {
@@ -587,6 +592,18 @@ function App() {
                 </div>
               </div>
               
+              {/* Summary Cards */}
+              <div className="grid md:grid-cols-2 gap-4 mb-6">
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-4 text-center">
+                  <p className="text-white/80 text-sm mb-1">ยอด OT รวมทั้งหมด</p>
+                  <p className="text-white text-2xl font-bold">฿{otHistory.reduce((sum, entry) => sum + entry.totalOT, 0).toLocaleString()}</p>
+                </div>
+                <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg p-4 text-center">
+                  <p className="text-white/80 text-sm mb-1">จำนวนครั้งที่ทำ OT</p>
+                  <p className="text-white text-2xl font-bold">{otHistory.length} ครั้ง</p>
+                </div>
+              </div>
+              
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
@@ -596,6 +613,7 @@ function App() {
                       <th className="px-4 py-3 text-gray-300 font-semibold">OT วันธรรมดา</th>
                       <th className="px-4 py-3 text-gray-300 font-semibold">OT วันหยุด</th>
                       <th className="px-4 py-3 text-gray-300 font-semibold">ยอดรวม OT</th>
+                      <th className="px-4 py-3 text-gray-300 font-semibold text-center">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -606,6 +624,14 @@ function App() {
                         <td className="px-4 py-3 text-blue-400">{entry.weekdayHours} ชม. (฿{entry.weekdayOTAmount.toLocaleString()})</td>
                         <td className="px-4 py-3 text-purple-400">{entry.holidayHours} ชม. (฿{entry.holidayOTAmount.toLocaleString()})</td>
                         <td className="px-4 py-3 text-green-400 font-bold">฿{entry.totalOT.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => deleteHistoryEntry(entry.id)}
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                          >
+                            ลบ
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
