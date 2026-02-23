@@ -19,6 +19,81 @@ function App() {
     setOtHistory(prevHistory => prevHistory.filter(entry => entry.id !== id))
   }
 
+  // Export to CSV functionality
+  const exportToCSV = () => {
+    if (otHistory.length === 0) {
+      alert('ไม่มีข้อมูลประวัติที่จะส่งออก')
+      return
+    }
+
+    // Create CSV headers
+    const headers = ['วันที่คำนวณ', 'เงินเดือน', 'ชั่วโมง OT วันธรรมดา', 'จำนวนเงิน OT วันธรรมดา', 'ชั่วโมง OT วันหยุด', 'จำนวนเงิน OT วันหยุด', 'ยอดเงินรวม OT', 'อัตราต่อชั่วโมง']
+    
+    // Create CSV data
+    const csvData = otHistory.map(entry => [
+      entry.date,
+      entry.salary,
+      entry.weekdayHours,
+      entry.weekdayOTAmount,
+      entry.holidayHours,
+      entry.holidayOTAmount,
+      entry.totalOT,
+      entry.hourlyRate
+    ])
+
+    // Convert to CSV string
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.join(','))
+    ].join('\n')
+
+    // Create blob and download
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', `OT_History_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // Copy summary to clipboard
+  const copySummaryToClipboard = async () => {
+    const totalAmount = otHistory.reduce((sum, entry) => sum + entry.totalOT, 0)
+    const totalCount = otHistory.length
+    const avgAmount = totalCount > 0 ? totalAmount / totalCount : 0
+    
+    const summary = `📊 สรุปประวัติ OT
+📅 วันที่: ${new Date().toLocaleDateString('th-TH')}
+💰 ยอด OT รวม: ฿${totalAmount.toLocaleString()}
+📈 จำนวนครั้ง: ${totalCount} ครั้ง
+📊 เฉลี่ยต่อครั้ง: ฿${avgAmount.toLocaleString()}
+
+🔗 จาก Portfolio OT Calculator`
+
+    try {
+      await navigator.clipboard.writeText(summary)
+      // Show success feedback
+      const button = document.getElementById('copy-summary-btn')
+      if (button) {
+        const originalText = button.textContent
+        button.textContent = '✅ คัดลอกแล้ว!'
+        button.classList.add('bg-green-600', 'hover:bg-green-700')
+        setTimeout(() => {
+          button.textContent = originalText
+          button.classList.remove('bg-green-600', 'hover:bg-green-700')
+        }, 2000)
+      }
+    } catch (err) {
+      console.error('Failed to copy summary:', err)
+      alert('ไม่สามารถคัดลอกข้อมูลได้ กรุณาลองใหม่')
+    }
+  }
+
   // Load history from localStorage on component mount
   useEffect(() => {
     try {
@@ -536,14 +611,29 @@ function App() {
         <section className="py-10 px-4 bg-gray-800/20">
           <div className="max-w-6xl mx-auto">
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-gray-700">
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h3 className="text-2xl font-bold text-gray-300">ประวัติการคำนวณ OT</h3>
-                <button
-                  onClick={clearHistory}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-                >
-                  ลบประวัติทั้งหมด
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    id="copy-summary-btn"
+                    onClick={copySummaryToClipboard}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg font-semibold transition-colors text-sm sm:text-base"
+                  >
+                    📋 คัดลอกสรุป
+                  </button>
+                  <button
+                    onClick={exportToCSV}
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg font-semibold transition-colors text-sm sm:text-base"
+                  >
+                    📥 ส่งออก CSV
+                  </button>
+                  <button
+                    onClick={clearHistory}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 rounded-lg font-semibold transition-colors text-sm sm:text-base"
+                  >
+                    🗑️ ลบทั้งหมด
+                  </button>
+                </div>
               </div>
               
               {/* Search and Filter Controls */}
@@ -594,48 +684,71 @@ function App() {
               
               {/* Summary Cards */}
               <div className="grid md:grid-cols-2 gap-4 mb-6">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-4 text-center">
-                  <p className="text-white/80 text-sm mb-1">ยอด OT รวมทั้งหมด</p>
-                  <p className="text-white text-2xl font-bold">฿{otHistory.reduce((sum, entry) => sum + entry.totalOT, 0).toLocaleString()}</p>
+                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-6 text-center shadow-lg transform hover:scale-105 transition-all duration-300">
+                  <div className="flex items-center justify-center mb-2">
+                    <svg className="w-8 h-8 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-white/90 text-base font-medium">ยอด OT รวมทั้งหมด</p>
+                  </div>
+                  <p className="text-white text-3xl font-bold">฿{otHistory.reduce((sum, entry) => sum + entry.totalOT, 0).toLocaleString()}</p>
                 </div>
-                <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg p-4 text-center">
-                  <p className="text-white/80 text-sm mb-1">จำนวนครั้งที่ทำ OT</p>
-                  <p className="text-white text-2xl font-bold">{otHistory.length} ครั้ง</p>
+                <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl p-6 text-center shadow-lg transform hover:scale-105 transition-all duration-300">
+                  <div className="flex items-center justify-center mb-2">
+                    <svg className="w-8 h-8 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    <p className="text-white/90 text-base font-medium">จำนวนครั้งที่ทำ OT</p>
+                  </div>
+                  <p className="text-white text-3xl font-bold">{otHistory.length} ครั้ง</p>
                 </div>
               </div>
               
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-gray-600">
-                      <th className="px-4 py-3 text-gray-300 font-semibold">วันที่คำนวณ</th>
-                      <th className="px-4 py-3 text-gray-300 font-semibold">เงินเดือน</th>
-                      <th className="px-4 py-3 text-gray-300 font-semibold">OT วันธรรมดา</th>
-                      <th className="px-4 py-3 text-gray-300 font-semibold">OT วันหยุด</th>
-                      <th className="px-4 py-3 text-gray-300 font-semibold">ยอดรวม OT</th>
-                      <th className="px-4 py-3 text-gray-300 font-semibold text-center">จัดการ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getFilteredHistory().map((entry) => (
-                      <tr key={entry.id} className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
-                        <td className="px-4 py-3 text-gray-400">{entry.date}</td>
-                        <td className="px-4 py-3 text-gray-300">฿{entry.salary.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-blue-400">{entry.weekdayHours} ชม. (฿{entry.weekdayOTAmount.toLocaleString()})</td>
-                        <td className="px-4 py-3 text-purple-400">{entry.holidayHours} ชม. (฿{entry.holidayOTAmount.toLocaleString()})</td>
-                        <td className="px-4 py-3 text-green-400 font-bold">฿{entry.totalOT.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => deleteHistoryEntry(entry.id)}
-                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
-                          >
-                            ลบ
-                          </button>
-                        </td>
+                <div className="min-w-[800px]">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-gray-600">
+                        <th className="px-2 sm:px-4 py-3 text-gray-300 font-semibold text-xs sm:text-sm">วันที่คำนวณ</th>
+                        <th className="px-2 sm:px-4 py-3 text-gray-300 font-semibold text-xs sm:text-sm">เงินเดือน</th>
+                        <th className="px-2 sm:px-4 py-3 text-gray-300 font-semibold text-xs sm:text-sm">OT วันธรรมดา</th>
+                        <th className="px-2 sm:px-4 py-3 text-gray-300 font-semibold text-xs sm:text-sm">OT วันหยุด</th>
+                        <th className="px-2 sm:px-4 py-3 text-gray-300 font-semibold text-xs sm:text-sm">ยอดรวม OT</th>
+                        <th className="px-2 sm:px-4 py-3 text-gray-300 font-semibold text-xs sm:text-sm text-center">จัดการ</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {getFilteredHistory().map((entry) => (
+                        <tr key={entry.id} className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
+                          <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-400 text-xs sm:text-sm">{entry.date}</td>
+                          <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-300 text-xs sm:text-sm">฿{entry.salary.toLocaleString()}</td>
+                          <td className="px-2 sm:px-4 py-2 sm:py-3 text-blue-400 text-xs sm:text-sm">
+                            <div className="flex flex-col sm:flex-row sm:items-center">
+                              <span>{entry.weekdayHours} ชม.</span>
+                              <span className="text-xs sm:text-xs sm:ml-1">(฿{entry.weekdayOTAmount.toLocaleString()})</span>
+                            </div>
+                          </td>
+                          <td className="px-2 sm:px-4 py-2 sm:py-3 text-purple-400 text-xs sm:text-sm">
+                            <div className="flex flex-col sm:flex-row sm:items-center">
+                              <span>{entry.holidayHours} ชม.</span>
+                              <span className="text-xs sm:text-xs sm:ml-1">(฿{entry.holidayOTAmount.toLocaleString()})</span>
+                            </div>
+                          </td>
+                          <td className="px-2 sm:px-4 py-2 sm:py-3 text-green-400 font-bold text-xs sm:text-sm">฿{entry.totalOT.toLocaleString()}</td>
+                          <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
+                            <button
+                              onClick={() => deleteHistoryEntry(entry.id)}
+                              className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs sm:text-sm font-medium transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
+                            >
+                              <span className="hidden sm:inline">ลบ</span>
+                              <span className="sm:hidden">🗑️</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
               
               {/* Summary */}
