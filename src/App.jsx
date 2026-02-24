@@ -13,6 +13,8 @@ function App() {
   const [otHistory, setOtHistory] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState('all')
+  const [exchangeRate, setExchangeRate] = useState(null)
+  const [loadingExchange, setLoadingExchange] = useState(true)
 
   // Delete specific history entry
   const deleteHistoryEntry = (id) => {
@@ -93,6 +95,41 @@ function App() {
       alert('ไม่สามารถคัดลอกข้อมูลได้ กรุณาลองใหม่')
     }
   }
+
+  // Fetch exchange rate from API
+  const fetchExchangeRate = async () => {
+    setLoadingExchange(true)
+    try {
+      // Try ExchangeRate-API first (free, no API key required)
+      const response = await fetch('https://v6.exchangerate-api.com/v6/latest/USD')
+      if (response.ok) {
+        const data = await response.json()
+        setExchangeRate({
+          rate: data.conversion_rates.THB,
+          source: 'ExchangeRate-API',
+          lastUpdated: new Date().toLocaleString('th-TH')
+        })
+      } else {
+        throw new Error('API failed')
+      }
+    } catch (error) {
+      console.log('Primary API failed, using mock data:', error)
+      // Fallback to mock data
+      setExchangeRate({
+        rate: 36.5, // Mock rate
+        source: 'Mock Data (จังหวัดชลบุรี)',
+        lastUpdated: new Date().toLocaleString('th-TH'),
+        isMock: true
+      })
+    } finally {
+      setLoadingExchange(false)
+    }
+  }
+
+  // Fetch exchange rate on component mount
+  useEffect(() => {
+    fetchExchangeRate()
+  }, [])
 
   // Load history from localStorage on component mount
   useEffect(() => {
@@ -449,6 +486,101 @@ function App() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dashboard Section */}
+      <section className="py-16 px-4 bg-gradient-to-br from-gray-900/50 to-gray-800/50">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+            <span className="gradient-text">Dashboard ข้อมูลวันนี้</span>
+          </h2>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Exchange Rate Card */}
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl p-6 shadow-lg transform hover:scale-105 transition-all duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <svg className="w-8 h-8 text-white mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h3 className="text-white font-semibold text-lg">อัตราแลกเปลี่ยน</h3>
+                </div>
+                {exchangeRate?.isMock && (
+                  <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">Mock</span>
+                )}
+              </div>
+              
+              {loadingExchange ? (
+                <div className="text-white text-center py-4">
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                  <p className="text-sm mt-2">กำลังโหลดข้อมูล...</p>
+                </div>
+              ) : exchangeRate ? (
+                <div>
+                  <div className="text-white mb-2">
+                    <span className="text-3xl font-bold">USD {exchangeRate.rate.toFixed(2)}</span>
+                    <span className="text-lg ml-2">THB</span>
+                  </div>
+                  <div className="text-white/80 text-sm">
+                    <p>📊 แหล่ง: {exchangeRate.source}</p>
+                    <p>🕐 อัพเดท: {exchangeRate.lastUpdated}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-white text-center py-4">
+                  <p>❌ ไม่สามารถโหลดข้อมูลได้</p>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Stats Card */}
+            <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-xl p-6 shadow-lg transform hover:scale-105 transition-all duration-300">
+              <div className="flex items-center mb-4">
+                <svg className="w-8 h-8 text-white mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <h3 className="text-white font-semibold text-lg">สถิติ OT วันนี้</h3>
+              </div>
+              
+              <div className="text-white">
+                <div className="mb-3">
+                  <p className="text-2xl font-bold">{otHistory.length}</p>
+                  <p className="text-white/80 text-sm">ครั้งที่คำนวณ</p>
+                </div>
+                {otHistory.length > 0 && (
+                  <div>
+                    <p className="text-lg font-semibold">
+                      ฿{otHistory.reduce((sum, entry) => sum + entry.totalOT, 0).toLocaleString()}
+                    </p>
+                    <p className="text-white/80 text-sm">ยอด OT รวม</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Today's Date Card */}
+            <div className="bg-gradient-to-br from-purple-600 to-pink-700 rounded-xl p-6 shadow-lg transform hover:scale-105 transition-all duration-300">
+              <div className="flex items-center mb-4">
+                <svg className="w-8 h-8 text-white mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <h3 className="text-white font-semibold text-lg">วันที่ปัจจุบัน</h3>
+              </div>
+              
+              <div className="text-white">
+                <p className="text-2xl font-bold mb-1">
+                  {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+                <p className="text-lg mb-2">
+                  {new Date().toLocaleDateString('th-TH', { weekday: 'long' })}
+                </p>
+                <p className="text-white/80 text-sm">
+                  {new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
             </div>
           </div>
         </div>
